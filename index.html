@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truku 命名的祕密 - 互動遊戲評量</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f7fafc;
+        }
+        /* 太魯閣族傳統色系與紋樣風格 */
+        .truku-pattern {
+            background-color: #e53e3e;
+            background-image: linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), 
+                              linear-gradient(45deg, #000 25%, #e53e3e 25%, #e53e3e 75%, #000 75%, #000);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            opacity: 0.08;
+        }
+        .truku-red { color: #e53e3e; }
+        .bg-truku-red { background-color: #e53e3e; }
+        .border-truku-red { border-color: #e53e3e; }
+        
+        /* 卡片翻轉效果 */
+        .flip-card {
+            background-color: transparent;
+            perspective: 1000px;
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+        }
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col justify-between relative overflow-x-hidden">
+
+    <!-- 背景太魯閣紋樣 -->
+    <div class="absolute inset-0 truku-pattern pointer-events-none z-0"></div>
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-white shadow-md border-b-4 border-red-600 z-10 sticky top-0">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-red-600 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg">T</div>
+                <div>
+                    <h1 class="text-xl font-black text-slate-800 tracking-wide">Truku 命名的祕密</h1>
+                    <p class="text-xs text-slate-500 font-medium">太魯閣族連父名制與文化禮節互動評量</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="showInstructionModal()" class="text-slate-600 hover:text-red-600 transition-colors duration-200 flex items-center space-x-1">
+                    <i class="fa-regular fa-circle-question text-lg"></i>
+                    <span class="text-sm font-medium hidden sm:inline">遊戲指南</span>
+                </button>
+                <div class="bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full flex items-center space-x-2">
+                    <span class="text-xs font-bold text-amber-700">課堂模式</span>
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要遊戲內容區 -->
+    <main class="flex-grow z-10 max-w-6xl w-full mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
+        
+        <!-- 左側：遊戲核心互動面板 -->
+        <div class="flex-grow lg:w-2/3 flex flex-col justify-between bg-white rounded-3xl shadow-xl border border-slate-100 p-6 relative overflow-hidden">
+            
+            <!-- 進度條與當前關卡 -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <span id="level-indicator" class="bg-red-100 text-red-700 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                        載入中...
+                    </span>
+                    <span id="score-indicator" class="text-slate-600 font-bold text-sm">
+                        答對題數：<span class="text-red-600 text-lg" id="current-score">0</span> / <span id="total-questions">0</span>
+                    </span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                    <div id="progress-bar" class="bg-gradient-to-r from-red-500 to-amber-500 h-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- 核心遊戲畫面 -->
+            <div class="flex-grow flex flex-col items-center justify-center my-4 min-h-[350px]">
+                
+                <!-- 名牌展示區 -->
+                <div id="card-container" class="w-full max-w-md h-48 flip-card mb-8">
+                    <div class="flip-card-inner w-full h-full shadow-lg rounded-2xl">
+                        <!-- 正面：名牌 -->
+                        <div class="flip-card-front bg-gradient-to-br from-slate-800 to-slate-900 text-white p-6 flex flex-col justify-between items-center border-4 border-red-500">
+                            <div class="text-xs uppercase tracking-widest text-slate-400 font-bold border-b border-slate-700 pb-1 w-full text-center">
+                                Truku Hangan (太魯閣族名牌)
+                            </div>
+                            <div class="my-auto text-center">
+                                <h2 id="card-name" class="text-3xl sm:text-4xl font-extrabold tracking-wide text-white drop-shadow-md">
+                                    -- --
+                                </h2>
+                                <p class="text-xs text-amber-400 mt-2 font-semibold">💡 點擊下方按鈕進行關卡評量</p>
+                            </div>
+                            <div class="w-full flex justify-between items-center text-xs text-slate-400">
+                                <span>Tribal Identity</span>
+                                <i class="fa-solid fa-id-card text-red-500 text-lg"></i>
+                            </div>
+                        </div>
+                        <!-- 背面：文化解說/答案示意圖 -->
+                        <div id="card-back-side" class="flip-card-back bg-gradient-to-br from-amber-50 to-orange-50 text-slate-800 p-6 flex flex-col justify-between items-center border-4 border-amber-500">
+                            <div class="text-xs uppercase tracking-widest text-amber-700 font-bold border-b border-amber-200 pb-1 w-full text-center">
+                                文化知識補給站
+                            </div>
+                            <div class="my-auto text-center px-2">
+                                <h3 id="card-back-title" class="text-xl font-bold text-amber-900 mb-2">--</h3>
+                                <p id="card-back-desc" class="text-sm text-slate-700 leading-relaxed">--</p>
+                            </div>
+                            <div class="w-full flex justify-between items-center text-xs text-amber-700">
+                                <span>Gaya na Truku</span>
+                                <i class="fa-solid fa-feather-pointed text-amber-600 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 互動指令與問題描述 -->
+                <div class="text-center max-w-xl px-4 mb-6">
+                    <div class="flex items-center justify-center space-x-2 text-red-600 mb-1">
+                        <i class="fa-solid fa-volume-high animate-bounce"></i>
+                        <span id="question-voice-text" class="text-lg font-black tracking-wide">--</span>
+                    </div>
+                    <p id="question-translation" class="text-sm text-slate-500 font-medium">（中文翻譯）</p>
+                    <p id="question-guide" class="text-md text-slate-700 font-semibold mt-3 bg-red-50 px-4 py-2 rounded-xl border border-red-100 inline-block">--</p>
+                </div>
+
+                <!-- 互動選項/操作按鈕區 (動態生成) -->
+                <div id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg px-4 mb-4">
+                    <!-- 按鈕將由 JS 動態產生 -->
+                </div>
+
+                <!-- 肢體動作回饋展示區 (隱藏/顯示) -->
+                <div id="action-feedback-box" class="hidden w-full max-w-md bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-4 text-center my-4 animate-pulse">
+                    <span id="action-icon" class="text-3xl mb-1 block">🏹</span>
+                    <h4 id="action-title" class="font-black text-emerald-800 text-lg">請做出拉弓姿勢！</h4>
+                    <p id="action-desc" class="text-xs text-emerald-600 mt-1">老師正看著你唷，勇敢展現太魯閣勇士的英姿吧！</p>
+                </div>
+
+            </div>
+
+            <!-- 底部控制按鈕 -->
+            <div class="border-t border-slate-100 pt-4 flex justify-between items-center">
+                <button id="btn-prev" onclick="prevQuestion()" class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> 上一題
+                </button>
+                <div class="flex space-x-2">
+                    <button id="btn-hint" onclick="toggleCardFlip()" class="px-4 py-2 text-sm font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl transition-all duration-200">
+                        <i class="fa-solid fa-rotate mr-1"></i> 翻轉名牌 (看答案/提示)
+                    </button>
+                    <button id="btn-next" onclick="nextQuestion()" class="px-5 py-2 text-sm font-black bg-slate-800 hover:bg-slate-900 text-white rounded-xl transition-all duration-200">
+                        下一題 <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 右側：教師引導工具與文化小幫手 -->
+        <div class="lg:w-1/3 flex flex-col gap-6">
+            
+            <!-- 教師引導與互動提示詞 -->
+            <div class="bg-gradient-to-br from-red-500 to-red-600 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                <!-- 裝飾背景圈 -->
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white opacity-10 rounded-full"></div>
+                <div class="absolute -left-10 -top-10 w-24 h-24 bg-white opacity-10 rounded-full"></div>
+
+                <div class="flex items-center space-x-2 mb-4 relative z-10">
+                    <div class="bg-white text-red-600 p-1.5 rounded-lg">
+                        <i class="fa-solid fa-chalkboard-user text-lg"></i>
+                    </div>
+                    <h3 class="font-black text-lg tracking-wide">教師引導提示詞</h3>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20 mb-4 relative z-10">
+                    <span id="prompt-target" class="text-xs font-black bg-white text-red-600 px-2.5 py-1 rounded-full uppercase tracking-wider inline-block mb-2">
+                        引導目標
+                    </span>
+                    <p id="prompt-truku" class="font-extrabold text-lg leading-relaxed mb-2 text-amber-200">
+                        "Q qita binaw!"
+                    </p>
+                    <p id="prompt-chinese" class="text-sm text-slate-100 leading-relaxed">
+                        "小勇士們，準備好聽聽祖先傳下來的名字了嗎？看一看吧！"
+                    </p>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-white/80 relative z-10">
+                    <span>💡 老師可大聲朗讀此提示引導學生</span>
+                    <button onclick="readPromptAloud()" class="bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-md flex items-center space-x-1 transition-all">
+                        <i class="fa-solid fa-volume-high"></i>
+                        <span>語音引導</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 太魯閣族連父名制科普 -->
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+                <div class="flex items-center space-x-2 mb-4">
+                    <div class="bg-amber-100 text-amber-800 p-1.5 rounded-lg">
+                        <i class="fa-solid fa-book-open"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-lg">太魯閣族的命名祕密</h3>
+                </div>
+                
+                <div class="space-y-4 text-sm text-slate-600">
+                    <div class="border-l-4 border-red-500 pl-3 py-1">
+                        <h4 class="font-bold text-slate-800 mb-1">什麼是「連父名制」？</h4>
+                        <p class="leading-relaxed text-xs">太魯閣族（Truku）沒有傳統的家族姓氏。個人名字是由「自己的名字」加上「父親的名字」組合而成。例如 <strong>Watan Umin</strong> 代表他是 Umin 的孩子 Watan。</p>
+                    </div>
+
+                    <div class="border-l-4 border-amber-500 pl-3 py-1">
+                        <h4 class="font-bold text-slate-800 mb-1">男女名字的差異</h4>
+                        <p class="leading-relaxed text-xs">太魯閣族有特定常用於男性或女性的名字。例如：Watan、Lowking、Umin 多為男生名；Ciwang、Ipay、Obing 多為女生名。</p>
+                    </div>
+
+                    <div class="border-l-4 border-slate-500 pl-3 py-1">
+                        <h4 class="font-bold text-slate-800 mb-1">長輩稱謂的禮節</h4>
+                        <p class="leading-relaxed text-xs">見到部落的祖父（Baki）或祖母（Payi），要親切地問候「Embiyax su hug?」（你好嗎？），這是 Gaya（社會規範與祖訓）中非常重要的生活禮節。</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 底部資訊與鳴謝 -->
+    <footer class="bg-slate-800 text-slate-400 text-center py-4 border-t border-slate-700 z-10 text-xs">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p>© 2026 太魯閣族語數位課堂互動教材系列. All rights reserved.</p>
+            <p class="font-semibold text-slate-300">Mhuway su balay! (非常謝謝你！)</p>
+        </div>
+    </footer>
+
+    <!-- 遊戲說明彈窗 -->
+    <div id="instruction-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-red-600 relative animate-in fade-in zoom-in-95 duration-200">
+            <button onclick="hideInstructionModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl">
+                <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+            <div class="text-center mb-6">
+                <span class="text-3xl">🎮</span>
+                <h3 class="text-2xl font-black text-slate-800 mt-2">Truku 命名的祕密 遊戲指南</h3>
+                <p class="text-xs text-slate-500 mt-1">歡迎來到太魯閣族語互動評量課堂！</p>
+            </div>
+            
+            <div class="space-y-4 text-sm text-slate-600 max-h-96 overflow-y-auto pr-2">
+                <p class="font-bold text-red-600 bg-red-50 p-2 rounded-lg text-center">💡 本遊戲非常適合「老師投影帶領全班」或「學生自主練習」！</p>
+                
+                <div class="flex items-start space-x-3">
+                    <span class="bg-red-100 text-red-700 font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">1</span>
+                    <p><strong>觀察名牌：</strong> 每題會展示一個太魯閣族名（如 Watan Umin），請大家仔細看一看。</p>
+                </div>
+                
+                <div class="flex items-start space-x-3">
+                    <span class="bg-red-100 text-red-700 font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">2</span>
+                    <p><strong>聆聽指令與思考：</strong> 仔細聆聽或觀看中央紅色的「族語問題」，配合右方的「教師引導提示」理解問題含意。</p>
+                </div>
+
+                <div class="flex items-start space-x-3">
+                    <span class="bg-red-100 text-red-700 font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">3</span>
+                    <p><strong>回答與肢體互動：</strong> 點擊正確選項。部分關卡（如文化聯想、禮節動作）會要求做出「拉弓」、「織布」或「站立敬禮」等實體動作，請跟著畫面的提示一起動起來！</p>
+                </div>
+
+                <div class="flex items-start space-x-3">
+                    <span class="bg-red-100 text-red-700 font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">4</span>
+                    <p><strong>翻轉學習：</strong> 隨時可以點擊「翻轉名牌」查看該名字的文化意涵與背景知識解說。</p>
+                </div>
+            </div>
+
+            <button onclick="hideInstructionModal()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl mt-6 transition-all shadow-md">
+                準備好了，出發！
+            </button>
+        </div>
+    </div>
+
+    <!-- 恭喜通關彈窗 -->
+    <div id="congrats-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-4 border-amber-500 text-center relative">
+            <span class="text-5xl animate-bounce block mb-4">🏆</span>
+            <h3 class="text-2xl font-black text-slate-800">Mhuway su balay!</h3>
+            <p class="text-amber-600 font-bold text-lg mt-1">你成功解開了 Truku 命名的祕密！</p>
+            
+            <div class="my-6 bg-amber-50 rounded-2xl p-4 border border-amber-200">
+                <p class="text-slate-600 text-sm">你的答對率：</p>
+                <p class="text-4xl font-black text-amber-700 my-2" id="final-score">0 / 0</p>
+                <p class="text-xs text-slate-500 leading-relaxed">Utux（祖靈）看到你這麼努力、有禮貌地學習太魯閣族語，一定非常高興與欣慰！請繼續加油喔！</p>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="restartGame()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                    再玩一次
+                </button>
+                <button onclick="hideCongratsModal()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                    確定
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自訂訊息提示浮窗 (取代 alert) -->
+    <div id="toast-message" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center space-x-2 opacity-0 pointer-events-none transition-all duration-300">
+        <span id="toast-icon">ℹ️</span>
+        <span id="toast-text" class="text-sm font-bold">訊息</span>
+    </div>
+
+    <script>
+        // 評量題目與關卡設計數據庫
+        const questions = [
+            {
+                id: 1,
+                level: "第一關：聽力與身分",
+                name: "Watan Umin",
+                voiceText: "Ima ka hangan na?",
+                translation: "「他的名字是什麼？」",
+                guide: "請學生大聲認讀名牌上的名字，並選擇正確讀音：",
+                options: [
+                    { text: "Watan Umin (瓦旦．烏敏)", isCorrect: true, feedback: "太棒了！答對了。請大家一起大聲唸：Watan Umin！" },
+                    { text: "Ciwang Lowking (姬望．洛金)", isCorrect: false, feedback: "不對喔，再仔細看看名牌上的字母拼寫！" },
+                    { text: "Ipay Watan (依拜．瓦旦)", isCorrect: false, feedback: "不對喔，這不是名牌上的名字，再試一次！" }
+                ],
+                prompt: {
+                    target: "啟動興趣",
+                    truku: "Q qita binaw!",
+                    chinese: "小勇士們，準備好聽聽祖先傳下來的名字了嗎？看一看吧！"
+                },
+                culturalTip: {
+                    title: "關於 Watan Umin",
+                    desc: "Watan 是一個非常經典的太魯閣族男性名字。在太魯閣族歷史與傳說中，許多英勇、智慧的部落長者與領袖都擁有 Watan 這個名字。搭配連父名制，這代表他是 Umin 的兒子 Watan。"
+                }
+            },
+            {
+                id: 2,
+                level: "第二關：文化聯想",
+                name: "Watan Umin",
+                voiceText: "Hiya o snaw ka kuyuh?",
+                translation: "「他是男生還是女生？」",
+                guide: "判斷性別後，若為男生 (Snaw) 需立刻做出拉弓或英勇的肢體動作！",
+                options: [
+                    { 
+                        text: "Snaw (男生) 🏹 做出拉弓動作！", 
+                        isCorrect: true, 
+                        feedback: "沒錯！Watan 是男生名。全班一起做出拉弓狩獵的英勇姿勢！",
+                        action: { icon: "🏹", title: "Snaw! 請做出拉弓姿勢！", desc: "請大聲喊出『Snaw!』並做出雄糾糾、氣昂昂的拉弓姿勢！" }
+                    },
+                    { 
+                        text: "Kuyuh (女生) 織布動作", 
+                        isCorrect: false, 
+                        feedback: "不對喔，Watan 通常是男生的名字，再想想看！" 
+                    }
+                ],
+                prompt: {
+                    target: "鼓勵開口說",
+                    truku: "Rngaw binaw!",
+                    chinese: "別害羞，讓大家聽見 Truku 聲音的力量！大聲說出他是 Snaw 還是 Kuyuh 吧！"
+                },
+                culturalTip: {
+                    title: "男與女的文化責任",
+                    desc: "在太魯閣族傳統文化中，Snaw（男性）的責任是打獵、守護部落，因此以拉弓代表；而 Kuyuh（女性）的責任是織布與農耕。名字往往承載著長輩對孩子各司其職、承擔文化責任的深切期望。"
+                }
+            },
+            {
+                id: 3,
+                level: "第三關：命名規則",
+                name: "Watan Umin",
+                voiceText: "Nnima ka hangan nii? (Umin)",
+                translation: "「這是誰的名字？（指著 Umin）」",
+                guide: "指向名字後半部的「Umin」，這在太魯閣族的連父名制中代表什麼？",
+                options: [
+                    { text: "父親的名字 (Tama)", isCorrect: true, feedback: "非常正確！後半部的 Umin 就是父親的名字，展現太魯閣族尊崇父親的連父名制。" },
+                    { text: "母親的名字 (Bubu)", isCorrect: false, feedback: "不對喔，太魯閣族是實行『連父名制』，不是連母名喔！" },
+                    { text: "部落的名字 (Alang)", isCorrect: false, feedback: "不對喔，後半部是家人的名字，再想一想是哪一位長輩？" }
+                ],
+                prompt: {
+                    target: "引導命名邏輯",
+                    truku: "Umin o hnigan qhuni, nnima ka hangan nii?",
+                    chinese: "看著 Watan Umin 這個名字，後半部的 Umin 就像是大樹的根，那是誰在守護著 Watan 呢？"
+                },
+                culturalTip: {
+                    title: "根源的象徵：連父名",
+                    desc: "太魯閣族沒有「姓氏」概念，而是採用「個人名 + 父親名」的連父名制（Patronymic System）。這意味著 Watan 的父親名叫 Umin。這能讓部落的人一聽就知道你是誰家的孩子，承載家族的血脈記憶。"
+                }
+            },
+            {
+                id: 4,
+                level: "第一關：聽力與身分",
+                name: "Ciwang Lowking",
+                voiceText: "Ima ka hangan na?",
+                translation: "「她的名字是什麼？」",
+                guide: "請學生大聲認讀這個新的女性名牌，並選擇正確讀音：",
+                options: [
+                    { text: "Ciwang Lowking (姬望．洛金)", isCorrect: true, feedback: "太棒了！拼讀完全正確。請全班一起大聲讀：Ciwang Lowking！" },
+                    { text: "Ipay Lowking (依拜．洛金)", isCorrect: false, feedback: "不對喔，前面第一個字母是 C，再拼讀一次試試！" },
+                    { text: "Ciwang Umin (姬望．烏敏)", isCorrect: false, feedback: "前面 Ciwang 對了，但後面父親的名字看錯囉，再看看！" }
+                ],
+                prompt: {
+                    target: "啟動興趣",
+                    truku: "Q qita binaw! Ciwang su hug?",
+                    chinese: "看，這是一個非常美麗的名字，像高山上的百合花一樣。大家一起看一看吧！"
+                },
+                culturalTip: {
+                    title: "關於 Ciwang Lowking",
+                    desc: "Ciwang 是太魯閣族非常經典的女性名字。在太魯閣族歷史上，著名的信仰與文化先驅『姬望（Ciwang）』便是這個名字，具有極高的文化崇敬意義。後半部的 Lowking 則是她父親的名字。"
+                }
+            },
+            {
+                id: 5,
+                level: "第二關：文化聯想",
+                name: "Ciwang Lowking",
+                voiceText: "Hiya o snaw ka kuyuh?",
+                translation: "「她是男生還是女生？」",
+                guide: "判斷性別後，若為女生 (Kuyuh) 需立刻做出溫柔織布或勞動的肢體動作！",
+                options: [
+                    { 
+                        text: "Kuyuh (女生) 🌸 做出織布動作！", 
+                        isCorrect: true, 
+                        feedback: "答對了！Ciwang 是經典的女性名字。大家一起做出織布的靈巧動作！",
+                        action: { icon: "🌸", title: "Kuyuh! 請做出織布動作！", desc: "請大聲喊出『Kuyuh!』並用雙手模擬太魯閣族婦女在織布機前穿梭經緯線的細緻動作！" }
+                    },
+                    { 
+                        text: "Snaw (男生) 拉弓動作", 
+                        isCorrect: false, 
+                        feedback: "不對喔，Ciwang 通常是女生的名字，代表美麗與勤勞，再想想看！" 
+                    }
+                ],
+                prompt: {
+                    target: "鼓勵開口說",
+                    truku: "Rngaw binaw! Embiyax ka kuyuh Truku!",
+                    chinese: "大聲說出來吧！太魯閣族的女孩最勤勞了，她是男生（Snaw）還是女生（Kuyuh）呢？"
+                },
+                culturalTip: {
+                    title: "織布（Tminun）的榮耀",
+                    desc: "在太魯閣族 Gaya 規範中，學會織布（Tminun）是女性成年的重要標誌，只有手藝精湛的織女，才能在手上文上美麗的面文，得到族人的尊敬。這與男性的狩獵榮耀同等重要。"
+                }
+            },
+            {
+                id: 6,
+                level: "第三關：命名規則",
+                name: "Ciwang Lowking",
+                voiceText: "Nnima ka hangan nii? (Lowking)",
+                translation: "「這是誰的名字？（指著 Lowking）」",
+                guide: "Ciwang 後半部的「Lowking」代表誰的名字？",
+                options: [
+                    { text: "父親的名字 (Tama)", isCorrect: true, feedback: "答對了！這代表 Ciwang 的父親叫做 Lowking。無論男女，後半部都是接父親的名字喔！" },
+                    { text: "母親的名字 (Bubu)", isCorrect: false, feedback: "不對喔，太魯閣族傳統並非連母名，請再思考一下！" },
+                    { text: "祖父的名字 (Baki)", isCorrect: false, feedback: "雖然可能與祖父同名，但依照連名制規則，這層關係是直接連接著「父親」唷！" }
+                ],
+                prompt: {
+                    target: "引導命名邏輯",
+                    truku: "Lowking o tama na Ciwang. Nnima ka hangan nii?",
+                    chinese: "Ciwang 後面跟著 Lowking，代表 Lowking 就像厚實的肩膀守護著她。這是誰的名字呢？"
+                },
+                culturalTip: {
+                    title: "一脈相承的連名制",
+                    desc: "太魯閣族女孩出嫁後，名字依然維持『個人名 + 父親名』，不會因為婚姻而改變。這代表她永遠是父親家的一分子，與原生家庭的血脈與愛永遠相連。"
+                }
+            },
+            {
+                id: 7,
+                level: "第四關：禮節動作",
+                name: "Payi Obing (展示祖母圖卡)",
+                voiceText: "Hiyug! Thmuku! Payi su hug?",
+                translation: "「起立！敬禮！向祖母問候！」",
+                guide: "當看到祖母（Payi）的圖卡時，大家要立刻起立並做出適當的問候動作與話語！",
+                options: [
+                    { 
+                        text: "起立向 Payi 鞠躬問候「Embiyax su hug?」", 
+                        isCorrect: true, 
+                        feedback: "太完美了！起立、鞠躬，大聲說出 Embiyax su hug?（您好嗎？），這就是 Gaya 規定的好孩子！",
+                        action: { icon: "👵", title: "Hiyug! Thmuku! (起立敬禮)", desc: "請立刻在座位旁站好，彎腰鞠躬，並對著長輩大聲問候：『Embiyax su hug?』" }
+                    },
+                    { 
+                        text: "坐著點頭說「Mhuway su」", 
+                        isCorrect: false, 
+                        feedback: "遇到長輩（Baki 或 Payi）要站起來（Hiyug）鞠躬才是有禮貌的行為喔，再試一次！" 
+                    }
+                ],
+                prompt: {
+                    target: "強化肢體指令",
+                    truku: "Hiyug hug! Pskbiyax ta hangan Payi!",
+                    chinese: "現在，請大家像準備去工作一樣勤勉與禮貌。起立！我們要去跟 Payi（祖母）問候囉！"
+                },
+                culturalTip: {
+                    title: "長輩問候禮儀",
+                    desc: "在太魯閣族語中，Baki 是祖父（或對男性長輩的尊稱），Payi 是祖母（或對女性長輩的尊稱）。見到長輩起立（Hiyug）敬禮（Thmuku），並問候『Embiyax su hug?』（你身體健康/好嗎？），是展現謙遜、感恩與教養的必備禮節。"
+                }
+            }
+        ];
+
+        // 狀態變數
+        let currentIndex = 0;
+        let score = 0;
+        let isCardFlipped = false;
+        let userAnswers = new Array(questions.length).fill(null); // 紀錄每題的使用者答案
+
+        // 初始化
+        window.onload = function() {
+            loadQuestion(0);
+            document.getElementById('total-questions').innerText = questions.length;
+        };
+
+        // 載入題目
+        function loadQuestion(index) {
+            if (index < 0 || index >= questions.length) return;
+            
+            currentIndex = index;
+            const q = questions[index];
+            isCardFlipped = false;
+
+            // 更新 UI
+            document.getElementById('level-indicator').innerText = q.level;
+            document.getElementById('card-name').innerText = q.name;
+            document.getElementById('question-voice-text').innerText = q.voiceText;
+            document.getElementById('question-translation').innerText = q.translation;
+            document.getElementById('question-guide').innerText = q.guide;
+
+            // 確保卡片轉回正面
+            document.getElementById('card-container').classList.remove('flipped');
+
+            // 載入卡片背面文化解說
+            document.getElementById('card-back-title').innerText = q.culturalTip.title;
+            document.getElementById('card-back-desc').innerText = q.culturalTip.desc;
+
+            // 載入教師引導提示
+            document.getElementById('prompt-target').innerText = `引導：${q.prompt.target}`;
+            document.getElementById('prompt-truku').innerText = `"${q.prompt.truku}"`;
+            document.getElementById('prompt-chinese').innerText = `"${q.prompt.chinese}"`;
+
+            // 隱藏肢體動作盒
+            document.getElementById('action-feedback-box').classList.add('hidden');
+
+            // 生成選項按鈕
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+
+            q.options.forEach((opt, optIdx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full p-4 text-left rounded-2xl border-2 transition-all duration-200 flex items-center justify-between font-bold text-sm sm:text-base ";
+                
+                // 檢查是否已作答過
+                if (userAnswers[index] !== null) {
+                    // 已作答狀態
+                    if (optIdx === userAnswers[index]) {
+                        if (opt.isCorrect) {
+                            btn.className += "bg-emerald-50 border-emerald-500 text-emerald-800";
+                            btn.innerHTML = `<span>${opt.text}</span> <i class="fa-solid fa-circle-check text-emerald-600 text-xl"></i>`;
+                            // 顯示肢體動作
+                            if (opt.action) {
+                                showActionBox(opt.action);
+                            }
+                        } else {
+                            btn.className += "bg-red-50 border-red-500 text-red-800";
+                            btn.innerHTML = `<span>${opt.text}</span> <i class="fa-solid fa-circle-xmark text-red-600 text-xl"></i>`;
+                        }
+                    } else {
+                        btn.className += "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed";
+                        btn.innerHTML = `<span>${opt.text}</span>`;
+                    }
+                    btn.disabled = true;
+                } else {
+                    // 未作答狀態
+                    btn.className += "bg-white border-slate-200 text-slate-700 hover:border-red-500 hover:bg-red-50/50 cursor-pointer";
+                    btn.innerHTML = `<span>${opt.text}</span> <i class="fa-regular fa-circle text-slate-300"></i>`;
+                    btn.onclick = () => selectOption(optIdx);
+                }
+                optionsContainer.appendChild(btn);
+            });
+
+            // 更新進度條
+            const progress = ((index + 1) / questions.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+
+            // 更新按鈕狀態
+            document.getElementById('btn-prev').disabled = index === 0;
+            if (index === 0) {
+                document.getElementById('btn-prev').classList.add('opacity-40');
+            } else {
+                document.getElementById('btn-prev').classList.remove('opacity-40');
+            }
+
+            // 如果是最後一題且已作答，按鈕改為「結算分數」
+            const nextBtn = document.getElementById('btn-next');
+            if (index === questions.length - 1) {
+                nextBtn.innerHTML = `結算成績 <i class="fa-solid fa-trophy ml-1"></i>`;
+            } else {
+                nextBtn.innerHTML = `下一題 <i class="fa-solid fa-arrow-right ml-1"></i>`;
+            }
+        }
+
+        // 選擇答案
+        function selectOption(optIndex) {
+            const q = questions[currentIndex];
+            const selectedOpt = q.options[optIndex];
+            userAnswers[currentIndex] = optIndex;
+
+            // 判斷對錯
+            if (selectedOpt.isCorrect) {
+                score++;
+                document.getElementById('current-score').innerText = score;
+                showToast("🎉 太棒了！答對了！", "💚");
+            } else {
+                showToast("💡 沒關係，再加油！翻轉名牌看看提示吧。", "🧡");
+            }
+
+            // 重新載入當前題目以顯示對錯狀態
+            loadQuestion(currentIndex);
+
+            // 自動翻轉卡片，顯示文化補給站
+            setTimeout(() => {
+                if (!isCardFlipped) {
+                    toggleCardFlip();
+                }
+            }, 800);
+        }
+
+        // 顯示肢體動作提示框
+        function showActionBox(actionData) {
+            const box = document.getElementById('action-feedback-box');
+            document.getElementById('action-icon').innerText = actionData.icon;
+            document.getElementById('action-title').innerText = actionData.title;
+            document.getElementById('action-desc').innerText = actionData.desc;
+            box.classList.remove('hidden');
+        }
+
+        // 翻轉卡片
+        function toggleCardFlip() {
+            const card = document.getElementById('card-container');
+            isCardFlipped = !isCardFlipped;
+            if (isCardFlipped) {
+                card.classList.add('flipped');
+            } else {
+                card.classList.remove('flipped');
+            }
+        }
+
+        // 上一題
+        function prevQuestion() {
+            if (currentIndex > 0) {
+                loadQuestion(currentIndex - 1);
+            }
+        }
+
+        // 下一題 / 結算
+        function nextQuestion() {
+            if (currentIndex < questions.length - 1) {
+                loadQuestion(currentIndex + 1);
+            } else {
+                // 最後一題，顯示結算結果
+                showCongratsModal();
+            }
+        }
+
+        // 顯示自訂 Toast 訊息 (取代不支援的 alert)
+        function showToast(message, icon = "ℹ️") {
+            const toast = document.getElementById('toast-message');
+            document.getElementById('toast-icon').innerText = icon;
+            document.getElementById('toast-text').innerText = message;
+            
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // 語音朗讀輔助 (使用 Web Speech API)
+        function readPromptAloud() {
+            const trukuText = questions[currentIndex].prompt.truku;
+            const chineseText = questions[currentIndex].prompt.chinese;
+            
+            if ('speechSynthesis' in window) {
+                // 先念族語 (雖然合成器不一定支持太魯閣族語，但能以相近拉丁發音拼讀)
+                const utteranceTruku = new SpeechSynthesisUtterance(trukuText);
+                utteranceTruku.lang = 'id-ID'; // 以接近的南島語系(印尼)或羅馬拼音發音
+                utteranceTruku.rate = 0.8;
+
+                // 再念中文引導
+                const utteranceZh = new SpeechSynthesisUtterance(chineseText);
+                utteranceZh.lang = 'zh-TW';
+                utteranceZh.rate = 0.95;
+
+                window.speechSynthesis.cancel(); // 停止目前的播放
+                window.speechSynthesis.speak(utteranceTruku);
+                setTimeout(() => {
+                    window.speechSynthesis.speak(utteranceZh);
+                }, 1000);
+            } else {
+                showToast("您的瀏覽器不支援語音播放，請由老師親自帶讀喔！", "🔊");
+            }
+        }
+
+        // 彈窗控制
+        function showInstructionModal() {
+            document.getElementById('instruction-modal').classList.remove('hidden');
+            document.getElementById('instruction-modal').classList.add('flex');
+        }
+
+        function hideInstructionModal() {
+            document.getElementById('instruction-modal').classList.add('hidden');
+            document.getElementById('instruction-modal').classList.remove('flex');
+        }
+
+        function showCongratsModal() {
+            document.getElementById('final-score').innerText = `${score} / ${questions.length}`;
+            document.getElementById('congrats-modal').classList.remove('hidden');
+            document.getElementById('congrats-modal').classList.add('flex');
+        }
+
+        function hideCongratsModal() {
+            document.getElementById('congrats-modal').classList.add('hidden');
+            document.getElementById('congrats-modal').classList.remove('flex');
+        }
+
+        // 重新開始遊戲
+        function restartGame() {
+            score = 0;
+            currentIndex = 0;
+            userAnswers = new Array(questions.length).fill(null);
+            document.getElementById('current-score').innerText = 0;
+            hideCongratsModal();
+            loadQuestion(0);
+            showToast("遊戲已重置，小勇士們加油！", "🏹");
+        }
+    </script>
+</body>
+</html>
